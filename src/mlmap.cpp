@@ -97,7 +97,7 @@ void mlmap::init_map(ros::NodeHandle &node_handle)
     transformStamped_T_wl.transform.rotation.w = 1;
 
     visulize_raycasting = getBoolVariableFromYaml(configFilePath, "visulize_raycasting");
-
+    local_map->apply_odds_fusion_awareness = getBoolVariableFromYaml(configFilePath, "apply_odds_fusion_awareness");
     // independ modules:
     // enable_project2d = getBoolVariableFromYaml(configFilePath, "use_projected_2d_map");
     // occupancy_grid_publisher = new Local2OccupancyGrid2D(nh, "/occupancy_map", 2);
@@ -134,6 +134,10 @@ void mlmap::init_map(ros::NodeHandle &node_handle)
     odds_publisher->set_as_odds_publisher(nh, "/odds",
                                           getStringFromYaml(configFilePath, "world_frame_id"),
                                           5);
+    unknownpts_publisher = new rviz_vis();
+    unknownpts_publisher->set_as_unknownpts_publisher(nh, "/unknown_space",
+                                                      getStringFromYaml(configFilePath, "world_frame_id"),
+                                                      5);
     world_id = getStringFromYaml(configFilePath, "world_frame_id");
 
     map_pub = nh.advertise<visualization_msgs::Marker>("/raycasting", 3);
@@ -144,14 +148,20 @@ void mlmap::init_map(ros::NodeHandle &node_handle)
     OdomapproxSync_ = new message_filters::Synchronizer<ApproxSyncPolicyOdom>(ApproxSyncPolicyOdom(100), depth_sub, odom_sub, imu_sub);
     OdomapproxSync_->registerCallback(boost::bind(&mlmap::depth_odom_input_callback, this, _1, _2, _3));
     this->tf_timer_ = nh.createTimer(ros::Duration(0.1), std::bind(&mlmap::tf_timerCb, this));
-    this->inflate_timer_ = nh.createTimer(ros::Duration(0.2), std::bind(&mlmap::inflate_timerCb, this));
+    if (local_map->apply_inflate)
+        this->inflate_timer_ = nh.createTimer(ros::Duration(0.2), std::bind(&mlmap::inflate_timerCb, this));
     cout << "ApproxSyncPolicy message filter settled!" << endl;
 }
 
 void mlmap::inflate_timerCb()
 {
-    ROS_INFO("Inflate triggered");
+
+    // auto t1 = std::chrono::system_clock::now();
     inflate_map();
+    // auto t2 = std::chrono::system_clock::now();
+    // std::chrono::duration<double> diff = t2 - t1;
+
+    // ROS_INFO("Inflate triggered, time cost(ms): %.4f",diff.count() * 1000);
 }
 
 Vec3 mlmap::getcolor(double ratio)
@@ -194,7 +204,7 @@ Vec3 mlmap::getcolor(double ratio)
 
 Vec3 mlmap::getcolor_gray(double ratio)
 {
-    return Vec3(ratio,ratio,ratio);
+    return Vec3(ratio, ratio, ratio);
 }
 
 void mlmap::visualize_odds(float height = 0.7)
@@ -285,8 +295,9 @@ void mlmap::visualize_odds(float height = 0.7)
 
 void mlmap::inflate_map()
 {
-  Vec3I ct_glb; size_t subbox_id;
-  local_map->get_global_idx(ct_pos, ct_glb, subbox_id);
+    Vec3I ct_glb;
+    size_t subbox_id;
+    local_map->get_global_idx(ct_pos, ct_glb, subbox_id);
     Vec3I subbox_id_offset;
     // cout<<"begin inflate!"<<endl;
     for (subbox_id_offset(0) = -inflate_global_n; subbox_id_offset(0) <= inflate_global_n; subbox_id_offset(0)++)
@@ -294,16 +305,16 @@ void mlmap::inflate_map()
             for (subbox_id_offset(2) = -inflate_global_n; subbox_id_offset(2) <= inflate_global_n; subbox_id_offset(2)++)
             {
                 Vec3I temp_glb = subbox_id_offset + ct_glb;
-                
+
                 if (local_map->observed_group_map.find(temp_glb) != local_map->observed_group_map.end() && local_map->observed_group_map[temp_glb].occupancy.size() > 1)
                 {
-                  local_map->observed_group_map[temp_glb].inflate_occupancy.clear();
-                  local_map->observed_group_map[temp_glb].inflate_occupancy.resize(local_map->cell_num_subbox, 'u');
-                  for (auto it = 0; it < local_map->observed_group_map[temp_glb].occupancy.size(); it++)
-                  if (local_map->observed_group_map[temp_glb].occupancy[it] == 'o' && local_map->subbox_id2xyz_glb_vec(temp_glb, it)(2) > local_map->flate_height)
-                  { 
-                    local_map->inflate_atpos(temp_glb, it);
-                  }
+                    local_map->observed_group_map[temp_glb].inflate_occupancy.clear();
+                    local_map->observed_group_map[temp_glb].inflate_occupancy.resize(local_map->cell_num_subbox, 'u');
+                    for (auto it = 0; it < local_map->observed_group_map[temp_glb].occupancy.size(); it++)
+                        if (local_map->observed_group_map[temp_glb].occupancy[it] == 'o' && local_map->subbox_id2xyz_glb_vec(temp_glb, it)(2) > local_map->flate_height)
+                        {
+                            local_map->inflate_atpos(temp_glb, it);
+                        }
                 }
             }
 }
@@ -409,6 +420,7 @@ void mlmap::setFree_map_in_bound(Vec3 box_min, Vec3 box_max)
 void mlmap::visualize_map()
 {
     globalmap_publisher->pub_global_local_map(local_map, stamp);
+    unknownpts_publisher->pub_unkown_pts(local_map, stamp, ct_pos);
 }
 
 void mlmap::visualize_frontier()
@@ -483,8 +495,8 @@ void mlmap::depth_odom_input_callback(const sensor_msgs::Image::ConstPtr &img_Pt
     }
     cv_ptr->image.copyTo(depth_image_);
     ct_pos = Vec3(pose_Ptr->pose.pose.position.x,
-                    pose_Ptr->pose.pose.position.y,
-                    pose_Ptr->pose.pose.position.z);
+                  pose_Ptr->pose.pose.position.y,
+                  pose_Ptr->pose.pose.position.z);
     SO3 rot_og = SO3(Quaterniond(pose_Ptr->pose.pose.orientation.w,
                                  pose_Ptr->pose.pose.orientation.x,
                                  pose_Ptr->pose.pose.orientation.y,
@@ -504,16 +516,16 @@ void mlmap::depth_odom_input_callback(const sensor_msgs::Image::ConstPtr &img_Pt
     project_depth();
     // auto t11 = std::chrono::system_clock::now();
 
-    update_map(); 
+    update_map();
     map_updated = true;
 
     // main map update procedure is completed
     auto t2 = std::chrono::system_clock::now();
     visualize_map();
     if (local_map->apply_explored_area)
-    visualize_frontier();
+        visualize_frontier();
     if (if_visualize_odds)
-    visualize_odds(0.9);
+        visualize_odds(0.9);
     // odds_publisher->pub_odd_slice(local_map, stamp, std::bind(&mlmap::getOddGrad, this, _1, 5));
     // timerCb();
 
@@ -522,9 +534,8 @@ void mlmap::depth_odom_input_callback(const sensor_msgs::Image::ConstPtr &img_Pt
     time_total += diff.count() * 1000;
     count++;
     // cout<<"count % 10: "<<count % 10<<" "<<count<<endl;
-    if (count % 10 ==0)
-    printf("[mlmapping] map single time: %.4f ms, ave-time cost: %.4f ms\n", diff.count() * 1000, time_total / (count));
-
+    if (count % 10 == 0)
+        printf("[mlmapping] map single time: %.4f ms, ave-time cost: %.4f ms\n", diff.count() * 1000, time_total / (count));
 
     //        sum_t+=tt.dT_ms();
     //        count++;

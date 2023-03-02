@@ -25,7 +25,7 @@ private:
     unsigned int unique_submap_idx;
 
     bool visibility_check;
-
+    
     float log_odds_hit;
     float log_odds_miss;
     float log_odds_occupied_sh;
@@ -62,6 +62,7 @@ private:
 public:
     int inflate_n = 3;
     bool apply_inflate = false;
+    bool apply_odds_fusion_awareness = true;
     double flate_height = 0.1;
     bool apply_explored_area;
     float log_odds_max;
@@ -238,7 +239,7 @@ inline void local_map_cartesian::inflate_atpos(const Vec3I &glb_idx, size_t subb
         for (subbox_id_offset(1) = -inflate_n; subbox_id_offset(1) <= inflate_n; subbox_id_offset(1)++)
             for (subbox_id_offset(2) = -inflate_n; subbox_id_offset(2) <= inflate_n; subbox_id_offset(2)++)
             {
-                if (subbox_id_offset.lpNorm<1>() > inflate_n)
+                if (subbox_id_offset.lpNorm<2>() > inflate_n)
                     continue;
                 Vec3I subbox_id_inflate = subbox_id_offset + subbox_id2xyz_table[subbox_id];
                 bool expanded = false;

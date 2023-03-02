@@ -21,7 +21,7 @@ public:
     double max_z;
     double range_z;
     double cube_size_xyz;
-    typedef Vec3(*Fun_odds)(Vec3,size_t);
+    typedef Vec3 (*Fun_odds)(Vec3, size_t);
     // for localmap
     void set_as_awareness_map_publisher(ros::NodeHandle &nh,
                                         string topic_name,
@@ -38,6 +38,11 @@ public:
 
     // for globalmap
     void set_as_global_map_publisher(ros::NodeHandle &nh,
+                                     string topic_name,
+                                     string frame_id,
+                                     unsigned int buffer_size);
+
+    void set_as_unknownpts_publisher(ros::NodeHandle &nh,
                                      string topic_name,
                                      string frame_id,
                                      unsigned int buffer_size);
@@ -61,6 +66,12 @@ public:
     void pub_global_local_map(
         local_map_cartesian *localmap,
         const ros::Time stamp);
+
+    void pub_unkown_pts(
+    local_map_cartesian *localmap,
+    const ros::Time stamp,
+    const Vector3d &pos);
+
     void pub_frontier(local_map_cartesian *localmap,
                       const ros::Time stamp);
     void pub_odd_slice(local_map_cartesian *localmap,

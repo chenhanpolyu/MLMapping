@@ -47,6 +47,17 @@ void rviz_vis::set_as_global_map_publisher(ros::NodeHandle &nh,
     cout << this->frame_id << endl;
 }
 
+void rviz_vis::set_as_unknownpts_publisher(ros::NodeHandle &nh,
+                                 string topic_name,
+                                 string frame_id,
+                                 unsigned int buffer_size)
+{
+    this->map_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_name, buffer_size);
+    cout << "frame id: " << endl;
+    this->frame_id = frame_id;
+    cout << this->frame_id << endl;
+    
+}
 void rviz_vis::set_as_frontier_publisher(ros::NodeHandle &nh,
                                          string topic_name,
                                          string frame_id,
@@ -326,6 +337,45 @@ void rviz_vis::pub_global_local_map(
     map_pub.publish(output);
 }
 
+void rviz_vis::pub_unkown_pts(
+    local_map_cartesian *localmap,
+    const ros::Time stamp,
+    const Vector3d &pos)
+{ 
+    Vec3I glb_idx;
+    size_t subbox_id;
+    localmap->get_global_idx(pos, glb_idx, subbox_id);
+    sensor_msgs::PointCloud2 output;
+
+    PointCloudP_ptr pc(new PointCloudP);
+    pc->header.frame_id = this->frame_id;
+    pc->height = 1;
+    // int cnt = 0;
+    for (auto iter = localmap->observed_group_map.begin(); iter != localmap->observed_group_map.end(); iter++)
+    {
+        if ((iter->first - glb_idx).norm() > 1)
+        continue;
+        subbox_id = 0;
+        // cout<<"global box id: "<<iter->first.transpose()<<" number: "<<cnt++<<endl;
+        for (auto it = iter->second.occupancy.begin(); it != iter->second.occupancy.end(); it++)
+        {
+            // PointP p1 = localmap->subbox_id2xyz_glb(pt,2);
+            if (*it == 'u')
+            {
+                pc->points.emplace_back(localmap->subbox_id2xyz_glb(iter->first, subbox_id));
+                // cout<<"point: "<<pc->points.back()<<"glb id: "<<iter->first<<"subbox id: "<<*it<<endl;
+            }
+            subbox_id++;
+        }
+    }
+
+    pc->width = pc->points.size();
+    pcl::toROSMsg(*pc, output);
+    output.header.stamp = stamp;
+    map_pub.publish(output);
+}
+
+
 void rviz_vis::pub_odd_slice(local_map_cartesian *localmap,
                              const ros::Time stamp, Fun_odds fun)
 {
@@ -374,17 +424,16 @@ void rviz_vis::pub_odd_slice(local_map_cartesian *localmap,
                 color.b = static_cast<float>(rgb(2));
                 color.a = static_cast<float>(0.9);
                 spheres.colors.push_back(color);
-                
+
                 if (ratio > 0.8)
                 {
                     geometry_msgs::Point point1;
-                    Vec3 grad = fun(pt,5);
+                    Vec3 grad = fun(pt, 5);
                     point1.x = point.x + grad[0];
                     point1.y = point.y + grad[1];
                     point1.z = point.z + grad[2];
                     lines.points.emplace_back(point);
                     lines.points.emplace_back(point1);
-                    
                 }
                 subbox_id++;
                 // cout<<"point: "<<pc->points.back()<<"glb id: "<<iter->first<<"subbox id: "<<*it<<endl;
@@ -394,7 +443,7 @@ void rviz_vis::pub_odd_slice(local_map_cartesian *localmap,
     }
     mks.markers.push_back(spheres);
     mks.markers.push_back(lines);
-    // cout<<"size: "<<spheres.points.size()<<endl; 
+    // cout<<"size: "<<spheres.points.size()<<endl;
     if (spheres.points.size() != 0)
     {
         this->map_pub.publish(mks);

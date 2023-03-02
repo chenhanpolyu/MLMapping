@@ -74,6 +74,7 @@ private:
     rviz_vis *globalmap_publisher;
     rviz_vis *frontier_publisher;
     rviz_vis *odds_publisher;
+    rviz_vis *unknownpts_publisher;
     geometry_msgs::TransformStamped transformStamped_T_wl;
     bool visulize_raycasting;
     bool enable_project2d;
@@ -124,6 +125,7 @@ public:
     inline int getOccupancy(const Vec3 &pos_w);
     inline int getOccupancy(const Vec3 &pos_w, float inflate);
     inline int getInflateOccupancy(const Vec3 &pos_w);
+    inline int getInflateOccupancy(const Vec3 &pos_w, float inflate);
     inline float getOdd(const Vec3 &pos_w);
     inline float getOdd(const Vec3I &glb_id, size_t subbox_id);
 
@@ -208,6 +210,35 @@ inline int mlmap::getInflateOccupancy(const Vec3 &pos_w)
     else
         return UNKNOWN;
     }
+}
+
+inline int mlmap::getInflateOccupancy(const Vec3 &pos_w, float inflate)
+{
+    if (getInflateOccupancy(pos_w) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, 0, inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, 0, -inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, inflate, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, -inflate, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(inflate, 0, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(-inflate, 0, 0)) != OCCUPIED && // x y z axis
+
+        getInflateOccupancy(pos_w + Vec3(-inflate, inflate, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(-inflate, -inflate, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(inflate, inflate, 0)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(inflate, -inflate, 0)) != OCCUPIED && // xy plane
+
+        getInflateOccupancy(pos_w + Vec3(0, -inflate, inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, -inflate, -inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, inflate, inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(0, inflate, -inflate)) != OCCUPIED && // yz plane
+
+        getInflateOccupancy(pos_w + Vec3(-inflate, 0, inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(-inflate, 0, -inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(inflate, 0, inflate)) != OCCUPIED &&
+        getInflateOccupancy(pos_w + Vec3(inflate, 0, -inflate)) != OCCUPIED) // xz plane
+        return FREE;
+    else
+        return OCCUPIED;
 }
 
 inline float mlmap::getOdd(const Vec3 &pos_w) // return true odd

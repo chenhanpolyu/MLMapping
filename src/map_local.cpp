@@ -138,40 +138,74 @@ void local_map_cartesian::init_map(double d_xyz_in,
     // this->map = std::unique_ptr<vector<CARTESIAN_CELL>>(new vector<CARTESIAN_CELL>());
 }
 
-
-
 void local_map_cartesian::input_pc_pose_direct(awareness_map_cylindrical *a_map)
 {
     // local_switch = false;
     SE3 T_wa = a_map->T_wa;
-    for (auto pair_ : a_map->hit_idx_odds_hashmap)
+    if (apply_odds_fusion_awareness)
     {
-        Vec3I glb_idx;
-        size_t subbox_id;
-        Vec3 p_w = T_wa * a_map->map->at(a_map->mapIdx(pair_.first)).center_pt;
-        get_global_idx(p_w, glb_idx, subbox_id);
-        // size_t map_idx = mapIdx(xyz_idx);
-        if (allocate_ram(glb_idx))
+        for (auto pair_ : a_map->hit_idx_odds_hashmap)
         {
+            Vec3I glb_idx;
+            size_t subbox_id;
+            Vec3 p_w = T_wa * a_map->map->at(a_map->mapIdx(pair_.first)).center_pt;
+            get_global_idx(p_w, glb_idx, subbox_id);
+            // size_t map_idx = mapIdx(xyz_idx);
+            if (allocate_ram(glb_idx))
+            {
 
-            if (observed_group_map[glb_idx].log_odds[subbox_id] < log_odds_max)
-            {
-                observed_group_map[glb_idx].log_odds[subbox_id] += logit(pair_.second);
-                observed_group_map[glb_idx].log_odds[subbox_id] = observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_max ? log_odds_max : observed_group_map[glb_idx].log_odds[subbox_id];
-                // observed_group_map[glb_idx].log_odds[subbox_id] = log_odds_max;
-            }
-            // set observerable
-            if (observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_occupied_sh && observed_group_map[glb_idx].occupancy[subbox_id] != 'o')
-            {
-                observed_group_map[glb_idx].occupancy[subbox_id] = 'o';
-                if (apply_explored_area)
-                    observed_group_map[glb_idx].frontier.erase(subbox_id);
-                obs_cnt++;
-                // occupied_cell_idx_map.emplace(map->at(map_idx).idx);
+                if (observed_group_map[glb_idx].log_odds[subbox_id] < log_odds_max)
+                {
+                    observed_group_map[glb_idx].log_odds[subbox_id] += log_odds_hit; // logit(pair_.second);
+                    observed_group_map[glb_idx].log_odds[subbox_id] = observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_max ? log_odds_max : observed_group_map[glb_idx].log_odds[subbox_id];
+                    // observed_group_map[glb_idx].log_odds[subbox_id] = log_odds_max;
+                }
+                // set observerable
+                if (observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_occupied_sh && observed_group_map[glb_idx].occupancy[subbox_id] != 'o')
+                {
+                    observed_group_map[glb_idx].occupancy[subbox_id] = 'o';
+                    if (!apply_inflate)
+                        observed_group_map[glb_idx].inflate_occupancy[subbox_id] = 'o';
+                    if (apply_explored_area)
+                        observed_group_map[glb_idx].frontier.erase(subbox_id);
+                    obs_cnt++;
+                    // occupied_cell_idx_map.emplace(map->at(map_idx).idx);
+                }
             }
         }
-        // if (apply_explored_area)
-        //     update_observation(map_idx);
+    }
+    else
+    {
+        for (auto p_w : a_map->pcl_w)
+        {
+            Vec3I glb_idx;
+            size_t subbox_id;
+            get_global_idx(p_w, glb_idx, subbox_id);
+            // size_t map_idx = mapIdx(xyz_idx);
+            if (allocate_ram(glb_idx))
+            {
+
+                if (observed_group_map[glb_idx].log_odds[subbox_id] < log_odds_max)
+                {
+                    observed_group_map[glb_idx].log_odds[subbox_id] += log_odds_hit; // logit(pair_.second);
+                    observed_group_map[glb_idx].log_odds[subbox_id] = observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_max ? log_odds_max : observed_group_map[glb_idx].log_odds[subbox_id];
+                    // observed_group_map[glb_idx].log_odds[subbox_id] = log_odds_max;
+                }
+                // set observerable
+                if (observed_group_map[glb_idx].log_odds[subbox_id] > log_odds_occupied_sh && observed_group_map[glb_idx].occupancy[subbox_id] != 'o')
+                {
+                    observed_group_map[glb_idx].occupancy[subbox_id] = 'o';
+                    if (!apply_inflate)
+                        observed_group_map[glb_idx].inflate_occupancy[subbox_id] = 'o';
+                    if (apply_explored_area)
+                        observed_group_map[glb_idx].frontier.erase(subbox_id);
+                    obs_cnt++;
+                    // occupied_cell_idx_map.emplace(map->at(map_idx).idx);
+                }
+            }
+            // if (apply_explored_area)
+            //     update_observation(map_idx);
+        }
     }
     for (auto idx : a_map->miss_idx_set)
     {
@@ -197,6 +231,8 @@ void local_map_cartesian::input_pc_pose_direct(awareness_map_cylindrical *a_map)
                 if (observed_group_map[glb_idx].occupancy[subbox_id] == 'u' && apply_explored_area)
                     update_observation(glb_idx, subbox_id, p_w);
                 observed_group_map[glb_idx].occupancy[subbox_id] = 'f';
+                if (!apply_inflate)
+                    observed_group_map[glb_idx].inflate_occupancy[subbox_id] = 'f';
                 if (apply_explored_area)
                     observed_group_map[glb_idx].frontier.erase(subbox_id);
                 // occupied_cell_idx_map.erase(map->at(map_idx).idx);

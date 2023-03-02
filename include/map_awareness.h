@@ -50,6 +50,7 @@ public:
     std::unique_ptr<vector<CYLINDRICAL_CELL>> map;
     std::unique_ptr<vector<CYLINDRICAL_CELL>> map_tmp;
     // local to global messages
+    vector<Vec3> pcl_w;
     vector<Vec3> l2g_msg_hit_pts_l;  // pts, hit(occupied) measurement, increase the log-odd value
     vector<Vec3> l2g_msg_miss_pts_l; // pts, miss(non-occupied) measurement, decrease the log-odd value
     vector<float> l2g_msg_hit_odds_l;

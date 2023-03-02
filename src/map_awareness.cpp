@@ -217,26 +217,19 @@ void awareness_map_cylindrical::input_pc_pose(vector<Vec3> PC_s, SE3 T_wb)
     //     }
     // }
     // STEP 2: Add measurement
+    pcl_w.clear();
     for (auto p_s : PC_s)
     {
         auto p_l = T_ls * p_s;
         Vec3I rpz_idx;
         bool can_do_cast;
         size_t map_idx;
+        pcl_w.emplace_back(p_l + T_wb.translation());
         bool inside_range = xyz2RhoPhiZwithBoderCheck(p_l, rpz_idx, can_do_cast);
         if (inside_range)
         {
-            // l2g_msg_hit_pts_l.emplace_back(p_l);
-
-            // set observerable
             map_idx = mapIdx(rpz_idx);
             update_hits(p_l, rpz_idx, map_idx);
-            // if(map->at(map_idx).is_occupied == false)
-            // {
-            //     map->at(map_idx).is_occupied = true;
-            //     map->at(map_idx).sampled_xyz = p_l;
-            //     this->occupied_cell_idx.emplace_back(map_idx);
-            // }
         }
         if (can_do_cast && visibility_check)
         {
