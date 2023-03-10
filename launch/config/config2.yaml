@@ -26,16 +26,19 @@ mlmapping_cam_cx: 212.6516265869
 mlmapping_cam_cy: 117.238
 mlmapping_cam_fx: 213.728866577
 mlmapping_cam_fy: 213.728866577  # for real data
-mlmapping_depth_noise_coe: 0.00375
 
-camera2odom_latency: 0.085 # the latency (second) of the depth image minus the latency of the odom (imu). It can be estimated by the method in Dr. Han Chen's PHD thesis
+mlmapping_depth_noise_coe: 0.00375   # must > 0. noise model, the variance of depth at distance d is coe*d^2
+# camera2odom_latency: 0.085 # the latency (second) of the depth image minus the latency of the odom (imu). It can be estimated by the method in Dr. Han Chen's PHD thesis
+camera2odom_latency: 0.005 #
+
+apply_odds_fusion_awareness: true
+use_exploration_frontiers: false
+visualize_odds: false
+mlmapping_sample_cnt:       1000
 
 mlmapping_inflate_n:        2 # inflate size: mlmapping_subbox_d_xyz * mlmapping_inflate_n. It must smaller than mlmapping_subbox_n
-mlmapping_inflate_global_n: 2 # global inflate range: +-mlmapping_subbox_d_xyz * mlmapping_subbox_n * mlmapping_inflate_global_n
+mlmapping_inflate_global_n: 3 # global inflate range: +-mlmapping_subbox_d_xyz * mlmapping_subbox_n * mlmapping_inflate_global_n
 mlmapping_apply_inflate:    true
-use_exploration_frontiers: true
-visualize_odds: false
-mlmapping_sample_cnt:       500
 mlmapping_use_raycasting:   true
 mlmapping_enable_esdfs:     false
 mlmapping_enable_2d_grid:   false
@@ -46,9 +49,9 @@ publish_T_bs:      true
 ##transformation from sensor frame to body frame
 sensor_frame_id:   "camera_depth_optical_frame"
 T_B_S:
-[  0.0,   0.0,  1.0,  0.12,  #sensor position in body frame, x
+[  0.0,   0.0,  1.0,  0.10,  #sensor position in body frame, x
   -1.0,   0.0,  0.0,  0.0,   #sensor position in body frame, y
-   0.0,  -1.0,  0.0,  0.0,   #sensor position in body frame, z
+   0.0,  -1.0,  0.0,  0.005,   #sensor position in body frame, z
    0.0,   0.0,  0.0,  1.0]
 
 
