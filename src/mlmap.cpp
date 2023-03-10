@@ -412,6 +412,10 @@ void mlmap::setFree_map_in_bound(Vec3 box_min, Vec3 box_max)
                     local_map->observed_group_map[glb_id].occupancy[subbox_id] = 'f';
                     local_map->observed_group_map[glb_id].log_odds[subbox_id] = 0;
                 }
+                if (local_map->observed_group_map.find(glb_id) != local_map->observed_group_map.end() && local_map->observed_group_map[glb_id].inflate_occupancy.size() > 1)
+                {
+                    local_map->observed_group_map[glb_id].inflate_occupancy[subbox_id] = 'u';
+                }
             }
         }
     }
@@ -431,6 +435,7 @@ void mlmap::visualize_frontier()
 void mlmap::tf_timerCb()
 {
     // cout << "publish tfs!" << endl;
+    ros::spinOnce();
     SE3 T_wl = local_map->T_wl;
     transformStamped_T_wl.transform.translation.x = T_wl.translation().x();
     transformStamped_T_wl.transform.translation.y = T_wl.translation().y();
