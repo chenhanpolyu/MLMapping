@@ -37,8 +37,8 @@ use_exploration_frontiers: false
 visualize_odds: false
 mlmapping_sample_cnt:       1000
 
-mlmapping_inflate_n:        2 # inflate size: mlmapping_subbox_d_xyz * mlmapping_inflate_n. It must smaller than mlmapping_subbox_n
-mlmapping_inflate_global_n: 3 # global inflate range: +-mlmapping_subbox_d_xyz * mlmapping_subbox_n * mlmapping_inflate_global_n
+mlmapping_inflate_n:        3 # inflate size: mlmapping_subbox_d_xyz * mlmapping_inflate_n. It must smaller than mlmapping_subbox_n
+mlmapping_inflate_global_n: 5 # global inflate range: +-mlmapping_subbox_d_xyz * mlmapping_subbox_n * mlmapping_inflate_global_n
 mlmapping_apply_inflate:    true
 mlmapping_use_raycasting:   true
 mlmapping_enable_esdfs:     false
